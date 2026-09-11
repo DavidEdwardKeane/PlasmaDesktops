@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+source "$ROOT_DIR/lib/common.sh"
+source "$ROOT_DIR/lib/dbus.sh"
+source "$ROOT_DIR/lib/activities.sh"
+source "$ROOT_DIR/lib/backup.sh"
+source "$ROOT_DIR/lib/verify.sh"
+
+usage() {
+    cat <<EOF2
+Usage:
+  plasma-installer doctor
+  plasma-installer activity list
+  plasma-installer activity create NAME
+  plasma-installer activity ensure NAME
+  plasma-installer activity switch NAME
+  plasma-installer activity remove NAME
+  plasma-installer backup
+  plasma-installer verify
+
+Options:
+  -h, --help    Show this help
+EOF2
+}
+
+case "${1:-}" in
+    doctor)
+        check_dbus
+        check_activity_manager
+        ;;
+
+    activity)
+        case "${2:-}" in
+            list)
+                list_activities
+                ;;
+            create)
+                [[ $# -eq 3 ]] || die 'Usage: plasma-installer activity create "NAME"'
+                create_activity "$3"
+                ;;
+            ensure)
+                [[ $# -eq 3 ]] || die 'Usage: plasma-installer activity ensure "NAME"'
+                ensure_activity "$3"
+                ;;
+            switch)
+                [[ $# -eq 3 ]] || die 'Usage: plasma-installer activity switch "NAME"'
+                switch_activity "$3"
+                ;;
+            remove)
+                [[ $# -eq 3 ]] || die 'Usage: plasma-installer activity remove "NAME"'
+                remove_activity "$3"
+                ;;
+            *)
+                usage >&2
+                exit 2
+                ;;
+        esac
+        ;;
+
+    backup)
+        backup_config
+        ;;
+
+    verify)
+        verify_installation
+        ;;
+
+    -h|--help|'')
+        usage
+        ;;
+
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

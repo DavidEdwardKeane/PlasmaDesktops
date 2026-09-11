@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SERVICE="org.kde.ActivityManager"
+OBJECT="/ActivityManager/Activities"
+INTERFACE="org.kde.ActivityManager.Activities"
+
+if command -v qdbus-qt6 >/dev/null 2>&1; then
+    QDBUS=(qdbus-qt6)
+elif command -v qdbus6 >/dev/null 2>&1; then
+    QDBUS=(qdbus6)
+elif command -v qdbus >/dev/null 2>&1; then
+    QDBUS=(qdbus)
+else
+    echo "Error: qdbus6 or qdbus is required." >&2
+    echo "Install the KDE D-Bus command-line tools for your distribution." >&2
+    exit 1
+fi
+
+dbus_call() {
+    "${QDBUS[@]}" "$SERVICE" "$OBJECT" "$@"
+}
+
+find_activity_id() {
+    local wanted="$1"
+    local id name
+
+    while IFS= read -r id; do
+        [[ -n "$id" ]] || continue
+
+        name="$(dbus_call ActivityName "$id" 2>/dev/null || true)"
+
+        if [[ "$name" == "$wanted" ]]; then
+            printf '%s\n' "$id"
+            return 0
+        fi
+    done < <(dbus_call ListActivities 2>/dev/null)
+
+    return 1
+}
+
+list_activities() {
+    local id name
+
+    while IFS= read -r id; do
+        [[ -n "$id" ]] || continue
+
+        name="$(dbus_call ActivityName "$id" 2>/dev/null || true)"
+
+        printf '%s\t%s\n' "$id" "$name"
+    done < <(dbus_call ListActivities 2>/dev/null)
+}
+
+switch_activity() {
+    local name="$1"
+    local id
+
+    id="$(find_activity_id "$name")" || {
+        echo "Error: Activity not found: $name" >&2
+        echo >&2
+        echo "Available Activities:" >&2
+        list_activities >&2
+        return 1
+    }
+
+    dbus_call SetCurrentActivity "$id"
+
+    echo "Switched to Activity: $name"
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  activity list
+  activity switch "Activity Name"
+
+Commands:
+  list                  List Plasma Activities
+  switch NAME           Switch to an Activity by name
+EOF
+}
+
+case "${1:-}" in
+    list)
+        list_activities
+        ;;
+
+    switch)
+        if [[ $# -ne 2 ]]; then
+            echo 'Usage: activity switch "Activity Name"' >&2
+            exit 2
+        fi
+
+        switch_activity "$2"
+        ;;
+
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac
