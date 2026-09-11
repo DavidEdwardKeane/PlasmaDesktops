@@ -13,6 +13,7 @@ usage() {
     cat <<EOF2
 Usage:
   plasma-installer doctor
+  plasma-installer activity current
   plasma-installer activity list
   plasma-installer activity create NAME
   plasma-installer activity ensure NAME
@@ -33,10 +34,13 @@ case "${1:-}" in
         ;;
 
     activity)
-        case "${2:-}" in
-            list)
-                list_activities
-                ;;
+    case "${2:-}" in
+        current)
+            current_activity
+            ;;
+        list)
+            list_activities
+            ;;
             create)
                 [[ $# -eq 3 ]] || die 'Usage: plasma-installer activity create "NAME"'
                 create_activity "$3"

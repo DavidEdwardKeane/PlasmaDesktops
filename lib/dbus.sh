@@ -7,8 +7,8 @@ INTERFACE="org.kde.ActivityManager.Activities"
 QDBUS=()
 
 detect_qdbus() {
-    if command -v qdbus6 >/dev/null 2>&1; then
-        QDBUS=(qdbus6)
+    if command -v qdbus-qt6 >/dev/null 2>&1; then
+        QDBUS=(qdbus-qt6)
     elif command -v qdbus >/dev/null 2>&1; then
         QDBUS=(qdbus)
     else
@@ -17,6 +17,10 @@ detect_qdbus() {
 }
 
 dbus_call() {
+    if [[ ${#QDBUS[@]} -eq 0 ]]; then
+        detect_qdbus
+    fi
+
     "${QDBUS[@]}" "$SERVICE" "$OBJECT" "$@"
 }
 

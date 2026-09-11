@@ -40,21 +40,22 @@ list_activities() {
 
 create_activity() {
     local name="$1"
+    local id
 
-    if find_activity_id "$name" >/dev/null; then
-        warn "Activity already exists: $name"
+    if id="$(find_activity_id "$name")"; then
+        warn "Activity already exists: $name ($id)"
         return 0
     fi
 
-    # NOTE:
-    # The Activity Manager creation method differs across Plasma versions.
-    # Confirm the available API with:
-    #   plasma-installer doctor
-    #
-    # Do not guess the D-Bus method here. Once confirmed for the supported
-    # Plasma versions, put the compatibility handling in this function.
+    log "Creating activity: $name"
 
-    die "Activity creation is not yet implemented for this Plasma/D-Bus API"
+    id="$(dbus_call AddActivity "$name")"
+
+    if [[ -z "$id" ]]; then
+        die "Activity Manager returned an empty activity ID"
+    fi
+
+    ok "Created activity: $name ($id)"
 }
 
 ensure_activity() {
@@ -67,6 +68,24 @@ ensure_activity() {
 
     log "Creating activity: $name"
     create_activity "$name"
+}
+
+current_activity() {
+    local id name
+
+    id="$(dbus_call CurrentActivity)"
+
+    if [[ -z "$id" ]]; then
+        die "Activity Manager returned no current activity"
+    fi
+
+    name="$(activity_name "$id" || true)"
+
+    if [[ -n "$name" ]]; then
+        printf '%s\t%s\n' "$id" "$name"
+    else
+        printf '%s\n' "$id"
+    fi
 }
 
 switch_activity() {
@@ -94,8 +113,9 @@ remove_activity() {
         return 0
     }
 
-    # NOTE:
-    # Like creation, activity deletion should be wired to the actual
-    # Plasma-version-specific D-Bus API after introspection.
-    die "Activity removal is not yet implemented for this Plasma/D-Bus API (ID: $id)"
+    log "Removing activity: $name ($id)"
+
+    dbus_call RemoveActivity "$id"
+
+    ok "Removed activity: $name"
 }
